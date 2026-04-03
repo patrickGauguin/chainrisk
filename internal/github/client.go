@@ -1,6 +1,7 @@
 package github
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,11 @@ type apiRepo struct {
 	PushedAt        string `json:"pushed_at"`
 	Archived        bool   `json:"archived"`
 	Language        string `json:"language"`
+}
+
+type contentEncoding struct {
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
 }
 
 type Client struct {
@@ -100,4 +106,50 @@ func (cl *Client) GetRepo(owner, repo string) (types.RepoInfo, error) {
 	}
 
 	return resultRepo, err
+}
+
+func (cl *Client) GetFileContent(owner, repo, filePath string) (string, error) {
+	url := "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + filePath
+
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+cl.token)
+
+	resp, err := cl.httpClient.Do(req)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		return "", nil
+	}
+	if resp.StatusCode == 403 {
+		return "", fmt.Errorf("rate limited — set GITHUB_TOKEN")
+	}
+
+	respJson, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return "", err
+	}
+
+	contentEncoding := contentEncoding{}
+	json.Unmarshal(respJson, &contentEncoding)
+
+	cleanedEncodedContent := strings.ReplaceAll(contentEncoding.Content, "\n", "")
+	content, err := base64.StdEncoding.DecodeString(cleanedEncodedContent)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), err
 }

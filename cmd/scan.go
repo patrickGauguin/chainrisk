@@ -34,6 +34,15 @@ var scanCmd = &cobra.Command{
 		fmt.Printf("Stars: 		%d\n", repoInfo.Stars)
 		fmt.Printf("Archived: 	%v\n", repoInfo.Archived)
 		fmt.Printf("Pushed: 	%s\n", repoInfo.LastPushed.Format("2006-01-02"))
+
+		content, err := client.GetFileContent(owner, repo, "package.json")
+
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println(content)
 	},
 }
 
