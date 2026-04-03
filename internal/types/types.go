@@ -13,3 +13,10 @@ type RepoInfo struct {
 	Archived    bool
 	Language    string
 }
+
+type Dependency struct {
+	Name      string
+	Version   string
+	Ecosystem string
+	IsDev     bool
+}

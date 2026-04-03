@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/patrickGauguin/chainrisk/internal/github"
+	"github.com/patrickGauguin/chainrisk/internal/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -36,13 +37,21 @@ var scanCmd = &cobra.Command{
 		fmt.Printf("Pushed: 	%s\n", repoInfo.LastPushed.Format("2006-01-02"))
 
 		content, err := client.GetFileContent(owner, repo, "package.json")
-
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
-		fmt.Println(content)
+		deps, err := parser.ParsePackageJSON(content)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Printf("Found %d dependencies\n", len(deps))
+		for _, d := range deps {
+			fmt.Printf("  %s@%s (dev: %v)\n", d.Name, d.Version, d.IsDev)
+		}
 	},
 }
 
