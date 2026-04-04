@@ -20,3 +20,9 @@ type Dependency struct {
 	Ecosystem string
 	IsDev     bool
 }
+
+type Vulnerability struct {
+	ID       string
+	Severity string
+	Summary  string
+}

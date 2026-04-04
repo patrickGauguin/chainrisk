@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/patrickGauguin/chainrisk/internal/github"
+	"github.com/patrickGauguin/chainrisk/internal/osv"
 	"github.com/patrickGauguin/chainrisk/internal/parser"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +52,21 @@ var scanCmd = &cobra.Command{
 		fmt.Printf("Found %d dependencies\n", len(deps))
 		for _, d := range deps {
 			fmt.Printf("  %s@%s (dev: %v)\n", d.Name, d.Version, d.IsDev)
+		}
+
+		vulnMap, err := osv.LookupVulnerabilities(deps)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		for name, vulns := range vulnMap {
+			if len(vulns) > 0 {
+				fmt.Printf("\n%s has %d vulnerabilities:\n", name, len(vulns))
+				for _, v := range vulns {
+					fmt.Printf("  [%s] %s - %s\n", v.Severity, v.ID, v.Summary)
+				}
+			}
 		}
 	},
 }
