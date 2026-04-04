@@ -3,9 +3,9 @@ package osv
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/patrickGauguin/chainrisk/internal/types"
 )
@@ -82,7 +82,6 @@ func LookupVulnerabilities(deps []types.Dependency) (map[string][]types.Vulnerab
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(respJSON[:500])) // first 500 chars
 
 	batchResponse := batchResponse{}
 	json.Unmarshal(respJSON, &batchResponse)
@@ -93,13 +92,33 @@ func LookupVulnerabilities(deps []types.Dependency) (map[string][]types.Vulnerab
 		name := deps[i].Name
 		vulns := []types.Vulnerability{}
 
-		for _, vuln := range result.Vulns {
-			newVuln, err := fetchVulnDetails(vuln.ID)
-			if err != nil {
-				return nil, err
+		type vulnResult struct {
+			vuln types.Vulnerability
+			err  error
+		}
+
+		ch := make(chan vulnResult, len(result.Vulns))
+		var wg sync.WaitGroup
+
+		for _, v := range result.Vulns {
+			wg.Add(1)
+			id := v.ID
+			go func(id string) {
+				defer wg.Done()
+				vuln, err := fetchVulnDetails(id)
+				ch <- vulnResult{vuln, err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(ch)
+
+		for r := range ch {
+			if r.err != nil {
+				return nil, r.err
 			}
 
-			vulns = append(vulns, newVuln)
+			vulns = append(vulns, r.vuln)
 		}
 
 		vulnMap[name] = vulns
