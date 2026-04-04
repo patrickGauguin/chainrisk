@@ -59,7 +59,6 @@ func (cl *Client) GetRepo(owner, repo string) (types.RepoInfo, error) {
 	url := "https://api.github.com/repos/" + owner + "/" + repo
 
 	req, err := http.NewRequest("GET", url, nil)
-
 	if err != nil {
 		return types.RepoInfo{}, err
 	}
@@ -68,7 +67,6 @@ func (cl *Client) GetRepo(owner, repo string) (types.RepoInfo, error) {
 	req.Header.Set("Authorization", "Bearer "+cl.token)
 
 	resp, err := cl.httpClient.Do(req)
-
 	if err != nil {
 		return types.RepoInfo{}, err
 	}
