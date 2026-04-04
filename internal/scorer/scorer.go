@@ -1,37 +1,46 @@
 package scorer
 
 import (
+	"math"
+
 	"github.com/patrickGauguin/chainrisk/internal/types"
 )
 
 func ScorePackage(vulns []types.Vulnerability, daysSinceLastPush int) int {
 
-	securityScore := 0
+	criticalCount := 0
+	highCount := 0
+	mediumCount := 0
+	lowCount := 0
+
 	for _, vuln := range vulns {
 		switch vuln.Severity {
 		case "CRITICAL":
-			securityScore += 40
+			criticalCount += 1
 		case "HIGH":
-			securityScore += 20
+			highCount += 1
 		case "MEDIUM":
-			securityScore += 8
+			mediumCount += 1
 		case "LOW":
-			securityScore += 2
+			lowCount += 1
 		case "UNKNOWN":
-			securityScore += 5
-		default:
-			securityScore += 0
+			mediumCount += 1
 		}
 	}
 
-	securityScore = int(float64(securityScore) * 0.6)
+	criticalScore := int(90 * math.Log1p(float64(criticalCount)))
+	highScore := int(25 * math.Log1p(float64(highCount)))
+	mediumScore := int(12 * math.Log1p(float64(mediumCount)))
+	lowScore := int(4 * math.Log1p(float64(lowCount)))
+
+	securityScore := criticalScore + highScore + mediumScore + lowScore
 
 	maintainerScore := 0
 	switch true {
 	case daysSinceLastPush > 730:
-		maintainerScore = 40
+		maintainerScore = 30
 	case daysSinceLastPush > 365:
-		maintainerScore = 25
+		maintainerScore = 20
 	case daysSinceLastPush > 180:
 		maintainerScore = 10
 	default:
