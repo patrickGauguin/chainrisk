@@ -8,8 +8,6 @@ import (
 )
 
 func PrintTerminal(result *types.ScanResult) error {
-	fmt.Printf("NAME: %s | LANGUAGE: %s | STARS: %d | LAST_PUSHED: %s:\n", result.Repo.FullName, result.Repo.Language, result.Repo.Stars, result.Repo.LastPushed.Format("2006-01-12"))
-
 	var prodPackages []types.PackageRisk
 	var devPackages []types.PackageRisk
 
@@ -20,6 +18,10 @@ func PrintTerminal(result *types.ScanResult) error {
 			prodPackages = append(prodPackages, pkg)
 		}
 	}
+
+	fmt.Printf("NAME: %s | LANGUAGE: %s | STARS: %d | LAST_PUSHED: %s:\n", result.Repo.FullName, result.Repo.Language, result.Repo.Stars, result.Repo.LastPushed.Format("2006-01-12"))
+
+	printSummary(prodPackages, devPackages)
 
 	sort.Slice(prodPackages, func(i, j int) bool {
 		return prodPackages[i].Score > prodPackages[j].Score
@@ -86,4 +88,57 @@ func printPackages(packages []types.PackageRisk) {
 			}
 		}
 	}
+}
+
+func printSummary(prod, dev []types.PackageRisk) {
+	riskRank := map[string]int{
+		"CRITICAL": 4,
+		"HIGH":     3,
+		"MEDIUM":   2,
+		"LOW":      1,
+		"SAFE":     0,
+	}
+
+	highestRisk := "SAFE"
+	for _, pkg := range prod {
+		if riskRank[pkg.RiskLevel] > riskRank[highestRisk] {
+			highestRisk = pkg.RiskLevel
+		}
+	}
+
+	criticalCount := 0
+	highCount := 0
+	mediumCount := 0
+	lowCount := 0
+	safeCount := 0
+
+	allPackages := prod
+
+	for _, pkg := range dev {
+		allPackages = append(allPackages, pkg)
+	}
+
+	for _, pkg := range allPackages {
+		switch pkg.RiskLevel {
+		case "CRITICAL":
+			criticalCount++
+		case "HIGH":
+			highCount++
+		case "MEDIUM":
+			mediumCount++
+		case "LOW":
+			lowCount++
+		case "SAFE":
+			safeCount++
+		}
+	}
+
+	fmt.Printf("OVERALL RISK: %s\n", highestRisk)
+	fmt.Println("─────────────────────────────")
+	fmt.Printf("Total packages		%d\n", len(prod)+len(dev))
+	fmt.Printf("CRITICAL		%d\n", criticalCount)
+	fmt.Printf("HIGH			%d\n", highCount)
+	fmt.Printf("MEDIUM			%d\n", mediumCount)
+	fmt.Printf("LOW			%d\n", lowCount)
+	fmt.Printf("SAFE			%d\n", safeCount)
 }
