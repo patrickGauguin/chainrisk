@@ -30,6 +30,7 @@ type Vulnerability struct {
 type PackageRisk struct {
 	Dependency Dependency
 	Vulns      []Vulnerability
+	Info       PackageInfo
 	Score      int
 	RiskLevel  string
 }
@@ -37,4 +38,12 @@ type PackageRisk struct {
 type ScanResult struct {
 	Repo     RepoInfo
 	Packages []PackageRisk
+}
+
+type PackageInfo struct {
+	PublishedAt      time.Time
+	IsDefault        bool
+	IsDeprecated     bool
+	DeprecatedReason string
+	DaysSincePublish int
 }

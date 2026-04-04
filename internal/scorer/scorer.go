@@ -6,7 +6,7 @@ import (
 	"github.com/patrickGauguin/chainrisk/internal/types"
 )
 
-func ScorePackage(vulns []types.Vulnerability, daysSinceLastPush int) int {
+func ScorePackage(vulns []types.Vulnerability, info types.PackageInfo) int {
 
 	criticalCount := 0
 	highCount := 0
@@ -36,15 +36,19 @@ func ScorePackage(vulns []types.Vulnerability, daysSinceLastPush int) int {
 	securityScore := criticalScore + highScore + mediumScore + lowScore
 
 	maintainerScore := 0
+	if info.IsDeprecated {
+		maintainerScore += 15
+	}
+	if !(info.IsDefault) {
+		maintainerScore += 7
+	}
 	switch true {
-	case daysSinceLastPush > 730:
-		maintainerScore = 30
-	case daysSinceLastPush > 365:
-		maintainerScore = 20
-	case daysSinceLastPush > 180:
-		maintainerScore = 10
-	default:
-		maintainerScore = 0
+	case info.DaysSincePublish > 730:
+		maintainerScore += 7
+	case info.DaysSincePublish > 365:
+		maintainerScore += 5
+	case info.DaysSincePublish > 180:
+		maintainerScore += 2
 	}
 
 	total := securityScore + maintainerScore

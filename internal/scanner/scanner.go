@@ -1,8 +1,10 @@
 package scanner
 
 import (
+	"sync"
 	"time"
 
+	"github.com/patrickGauguin/chainrisk/internal/depsdev"
 	"github.com/patrickGauguin/chainrisk/internal/github"
 	"github.com/patrickGauguin/chainrisk/internal/osv"
 	"github.com/patrickGauguin/chainrisk/internal/parser"
@@ -41,6 +43,10 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 		return nil, err
 	}
 
+	for _, dep := range deps {
+		depsdev.GetPackageVersion(dep.Ecosystem, dep.Name, dep.Version)
+	}
+
 	vulnMap, err := osv.LookupVulnerabilities(deps)
 	if err != nil {
 		return nil, err
@@ -48,15 +54,51 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 
 	packagesRisk := []types.PackageRisk{}
 
+	type pkgResult struct {
+		pkgRisk types.PackageRisk
+		err     error
+	}
+
+	ch := make(chan pkgResult, len(deps))
+	var wg sync.WaitGroup
+
 	for _, dep := range deps {
-		vulns := vulnMap[dep.Name]
-		days := int(time.Since(repoInfo.LastPushed).Hours() / 24)
-		score := scorer.ScorePackage(vulns, days)
-		risk := scorer.RiskLevel(score)
+		wg.Add(1)
+		go func(dep types.Dependency) {
+			defer wg.Done()
+			pkgVersion, err := depsdev.GetPackageVersion(dep.Ecosystem, dep.Name, dep.Version)
+			if err != nil {
+				return
+			}
 
-		packageRisk := types.PackageRisk{Dependency: dep, Vulns: vulns, Score: score, RiskLevel: risk}
+			published, parseErr := time.Parse(time.RFC3339, pkgVersion.PublishedAt)
+			if parseErr != nil {
+				published = time.Time{}
+			}
 
-		packagesRisk = append(packagesRisk, packageRisk)
+			days := int(time.Since(published).Hours() / 24)
+
+			pkgInfo := types.PackageInfo{PublishedAt: published, IsDefault: pkgVersion.IsDefault, IsDeprecated: pkgVersion.IsDeprecated, DeprecatedReason: pkgVersion.DeprecatedReason, DaysSincePublish: days}
+
+			vulns := vulnMap[dep.Name]
+			score := scorer.ScorePackage(vulns, pkgInfo)
+			risk := scorer.RiskLevel(score)
+
+			pkgRisk := types.PackageRisk{Dependency: dep, Vulns: vulns, Info: pkgInfo, Score: score, RiskLevel: risk}
+
+			ch <- pkgResult{pkgRisk, nil}
+		}(dep)
+	}
+
+	wg.Wait()
+	close(ch)
+
+	for r := range ch {
+		if r.err != nil {
+			return nil, r.err
+		}
+
+		packagesRisk = append(packagesRisk, r.pkgRisk)
 	}
 
 	scanResult := types.ScanResult{Repo: repoInfo, Packages: packagesRisk}
