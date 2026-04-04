@@ -65,10 +65,22 @@ func pickThreshold(packages []types.PackageRisk) int {
 }
 
 func printPackages(packages []types.PackageRisk) {
+	severityRank := map[string]int{
+		"CRITICAL": 0,
+		"HIGH":     1,
+		"MEDIUM":   2,
+		"LOW":      3,
+		"UNKNOWN":  4,
+	}
+
 	for _, pkg := range packages {
 		fmt.Printf("  [name - %s][version - %s][score - %d][risk - %s]:\n", pkg.Dependency.Name, pkg.Dependency.Version, pkg.Score, pkg.RiskLevel)
 
 		if len(pkg.Vulns) > 0 {
+			sort.Slice(pkg.Vulns, func(i, j int) bool {
+				return severityRank[pkg.Vulns[i].Severity] < severityRank[pkg.Vulns[j].Severity]
+			})
+
 			for _, v := range pkg.Vulns {
 				fmt.Printf("      [%s] %s - %s\n", v.Severity, v.ID, v.Summary)
 			}
