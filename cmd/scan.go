@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/patrickGauguin/chainrisk/internal/github"
-	"github.com/patrickGauguin/chainrisk/internal/osv"
-	"github.com/patrickGauguin/chainrisk/internal/parser"
+	"github.com/patrickGauguin/chainrisk/internal/report"
+	"github.com/patrickGauguin/chainrisk/internal/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -15,59 +14,15 @@ var scanCmd = &cobra.Command{
 	Short: "Scan a GitHub repository",
 	Run: func(cmd *cobra.Command, args []string) {
 		token := os.Getenv("GITHUB_TOKEN")
-		client := github.New(token)
+		s := scanner.New(token)
 
-		owner, repo, err := github.ParseOwnerRepo(args[0])
-
+		result, err := s.Scan(args[0])
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
-		repoInfo, err := client.GetRepo(owner, repo)
-
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Printf("Name: 		%s\n", repoInfo.FullName)
-		fmt.Printf("Language: 	%s\n", repoInfo.Language)
-		fmt.Printf("Stars: 		%d\n", repoInfo.Stars)
-		fmt.Printf("Archived: 	%v\n", repoInfo.Archived)
-		fmt.Printf("Pushed: 	%s\n", repoInfo.LastPushed.Format("2006-01-02"))
-
-		content, err := client.GetFileContent(owner, repo, "package.json")
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		deps, err := parser.ParsePackageJSON(content)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Printf("Found %d dependencies\n", len(deps))
-		for _, d := range deps {
-			fmt.Printf("  %s@%s (dev: %v)\n", d.Name, d.Version, d.IsDev)
-		}
-
-		vulnMap, err := osv.LookupVulnerabilities(deps)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		for name, vulns := range vulnMap {
-			if len(vulns) > 0 {
-				fmt.Printf("\n%s has %d vulnerabilities:\n", name, len(vulns))
-				for _, v := range vulns {
-					fmt.Printf("  [%s] %s - %s\n", v.Severity, v.ID, v.Summary)
-				}
-			}
-		}
+		report.PrintTerminal(result)
 	},
 }
 

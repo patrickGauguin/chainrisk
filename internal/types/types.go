@@ -26,3 +26,15 @@ type Vulnerability struct {
 	Severity string
 	Summary  string
 }
+
+type PackageRisk struct {
+	Dependency Dependency
+	Vulns      []Vulnerability
+	Score      int
+	RiskLevel  string
+}
+
+type ScanResult struct {
+	Repo     RepoInfo
+	Packages []PackageRisk
+}
