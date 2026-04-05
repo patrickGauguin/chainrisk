@@ -19,7 +19,7 @@ func PrintTerminal(result *types.ScanResult) error {
 		}
 	}
 
-	fmt.Printf("NAME: %s | LANGUAGE: %s | STARS: %d | LAST_PUSHED: %s:\n", result.Repo.FullName, result.Repo.Language, result.Repo.Stars, result.Repo.LastPushed.Format("2006-01-12"))
+	fmt.Printf("NAME: %s | LANGUAGE: %s | STARS: %d | LAST_PUSHED: %s:\n", result.Repo.FullName, result.Repo.Language, result.Repo.Stars, result.Repo.LastPushed.Format("2006-01-02"))
 
 	printSummary(prodPackages, devPackages)
 
@@ -99,8 +99,14 @@ func printSummary(prod, dev []types.PackageRisk) {
 		"SAFE":     0,
 	}
 
+	allPackages := prod
+
+	for _, pkg := range dev {
+		allPackages = append(allPackages, pkg)
+	}
+
 	highestRisk := "SAFE"
-	for _, pkg := range prod {
+	for _, pkg := range allPackages {
 		if riskRank[pkg.RiskLevel] > riskRank[highestRisk] {
 			highestRisk = pkg.RiskLevel
 		}
@@ -111,12 +117,6 @@ func printSummary(prod, dev []types.PackageRisk) {
 	mediumCount := 0
 	lowCount := 0
 	safeCount := 0
-
-	allPackages := prod
-
-	for _, pkg := range dev {
-		allPackages = append(allPackages, pkg)
-	}
 
 	for _, pkg := range allPackages {
 		switch pkg.RiskLevel {

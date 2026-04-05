@@ -35,18 +35,24 @@ func ScorePackage(vulns []types.Vulnerability, info types.PackageInfo) int {
 
 	securityScore := criticalScore + highScore + mediumScore + lowScore
 
+	notLatest := !info.IsDefault
+
 	maintainerScore := 0
 	if info.IsDeprecated {
 		maintainerScore += 15
+		if notLatest {
+			maintainerScore += 5
+		}
 	}
-	if !(info.IsDefault) {
-		maintainerScore += 7
-	}
+
 	switch true {
 	case info.DaysSincePublish > 730:
-		maintainerScore += 7
-	case info.DaysSincePublish > 365:
 		maintainerScore += 5
+		if notLatest {
+			maintainerScore += 2
+		}
+	case info.DaysSincePublish > 365:
+		maintainerScore += 3
 	case info.DaysSincePublish > 180:
 		maintainerScore += 2
 	}
