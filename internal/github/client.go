@@ -87,6 +87,11 @@ func (cl *Client) GetRepo(owner, repo string) (types.RepoInfo, error) {
 	}
 
 	tempRepo := apiRepo{}
+
+	if len(respJson) == 0 {
+		return types.RepoInfo{}, fmt.Errorf("no package.json found in GetRepo")
+	}
+
 	json.Unmarshal(respJson, &tempRepo)
 
 	pushed, _ := time.Parse(time.RFC3339, tempRepo.PushedAt)
@@ -140,6 +145,11 @@ func (cl *Client) GetFileContent(owner, repo, filePath string) (string, error) {
 	}
 
 	contentEncoding := contentEncoding{}
+
+	if len(respJson) == 0 {
+		return "", nil
+	}
+
 	json.Unmarshal(respJson, &contentEncoding)
 
 	cleanedEncodedContent := strings.ReplaceAll(contentEncoding.Content, "\n", "")

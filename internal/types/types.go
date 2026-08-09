@@ -36,8 +36,9 @@ type PackageRisk struct {
 }
 
 type ScanResult struct {
-	Repo     RepoInfo
-	Packages []PackageRisk
+	Repo        RepoInfo
+	Packages    []PackageRisk
+	PackageMeta PackageMeta
 }
 
 type PackageInfo struct {
@@ -46,4 +47,10 @@ type PackageInfo struct {
 	IsDeprecated     bool
 	DeprecatedReason string
 	DaysSincePublish int
+}
+
+type PackageMeta struct {
+	Name      string
+	Version   string
+	Ecosystem string
 }

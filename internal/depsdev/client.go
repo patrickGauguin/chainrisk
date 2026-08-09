@@ -2,6 +2,7 @@ package depsdev
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -35,6 +36,11 @@ func GetPackageVersion(ecosystem, name, version string) (PackageVersion, error) 
 	}
 
 	packageVersion := PackageVersion{}
+
+	if len(respJSON) == 0 {
+		return PackageVersion{}, fmt.Errorf("no package.json found in GetPackageVersion")
+	}
+
 	json.Unmarshal(respJSON, &packageVersion)
 
 	return packageVersion, err

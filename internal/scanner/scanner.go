@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -33,14 +34,34 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 		return nil, err
 	}
 
-	content, err := s.Client.GetFileContent(owner, repo, "package.json")
-	if err != nil {
-		return nil, err
+	manifests := []struct {
+		path  string
+		parse func(string) (types.PackageMeta, []types.Dependency, error)
+	}{
+		{"package.json", parser.ParsePackageJSON},
+		{"go.mod", parser.ParseGoMod},
 	}
 
-	deps, err := parser.ParsePackageJSON(content)
-	if err != nil {
-		return nil, err
+	var pkgMeta types.PackageMeta
+	var deps []types.Dependency
+	for _, manifest := range manifests {
+		content, err := s.Client.GetFileContent(owner, repo, manifest.path)
+		if err != nil {
+			continue
+		}
+
+		pkg, dependencies, err := manifest.parse(content)
+		if err != nil {
+			continue
+		}
+
+		pkgMeta = pkg
+		deps = dependencies
+		break
+	}
+
+	if deps == nil {
+		return nil, fmt.Errorf("no supported manifest file found (package.json, go.mod)")
 	}
 
 	for _, dep := range deps {
@@ -101,7 +122,7 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 		packagesRisk = append(packagesRisk, r.pkgRisk)
 	}
 
-	scanResult := types.ScanResult{Repo: repoInfo, Packages: packagesRisk}
+	scanResult := types.ScanResult{Repo: repoInfo, Packages: packagesRisk, PackageMeta: pkgMeta}
 
 	return &scanResult, err
 }

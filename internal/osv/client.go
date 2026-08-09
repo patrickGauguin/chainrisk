@@ -3,6 +3,7 @@ package osv
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -84,6 +85,11 @@ func LookupVulnerabilities(deps []types.Dependency) (map[string][]types.Vulnerab
 	}
 
 	batchResponse := batchResponse{}
+
+	if len(respJSON) == 0 {
+		return map[string][]types.Vulnerability{}, fmt.Errorf("no package.json found in LookUpVulnerabilities")
+	}
+
 	json.Unmarshal(respJSON, &batchResponse)
 
 	vulnMap := map[string][]types.Vulnerability{}
@@ -155,6 +161,11 @@ func fetchVulnDetails(id string) (types.Vulnerability, error) {
 	}
 
 	smallVuln := smallOsvVuln{}
+
+	if len(respJSON) == 0 {
+		return types.Vulnerability{}, fmt.Errorf("no package.json found in fetchVulnDetails")
+	}
+
 	json.Unmarshal(respJSON, &smallVuln)
 
 	severity := smallVuln.DataBaseSpecific.Severity
