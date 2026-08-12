@@ -76,6 +76,9 @@ func ParseGoMod(content string) (types.PackageMeta, []types.Dependency, error) {
 			case "module":
 				pkgMeta = makeGoPkgMeta(fields[1])
 			case "require":
+				if len(fields) < 2 {
+					continue
+				}
 				if fields[1] == "(" {
 					inBlock = true
 					continue
