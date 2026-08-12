@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/patrickGauguin/chainrisk/internal/types"
 )
 
@@ -13,6 +14,15 @@ type packageJSON struct {
 	Version         string            `json:"version"`
 	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"devDependencies"`
+}
+
+type cargoToml struct {
+	Package struct {
+		Name    string `toml:"name"`
+		Version string `toml:"version"`
+	} `toml:"package"`
+	Dependencies    map[string]interface{} `toml:"dependencies"`
+	DevDependencies map[string]interface{} `toml:"dev-dependencies"`
 }
 
 func ParsePackageJSON(content string) (types.PackageMeta, []types.Dependency, error) {
@@ -48,8 +58,12 @@ func ParseRequirementsTxt(content string) (types.PackageMeta, []types.Dependency
 }
 
 func ParseGoMod(content string) (types.PackageMeta, []types.Dependency, error) {
-	var pkgData types.PackageMeta
+	var pkgMeta types.PackageMeta
 	var dependencies []types.Dependency
+
+	if content == "" {
+		return types.PackageMeta{}, nil, fmt.Errorf("no go.mod found ParseGoMod")
+	}
 
 	lines := strings.Split(content, "\n")
 	inBlock := false
@@ -60,20 +74,20 @@ func ParseGoMod(content string) (types.PackageMeta, []types.Dependency, error) {
 		} else {
 			switch fields[0] {
 			case "module":
-				pkgData = makePkgMeta(fields[1])
+				pkgMeta = makeGoPkgMeta(fields[1])
 			case "require":
 				if fields[1] == "(" {
 					inBlock = true
 					continue
 				} else {
-					dependencies = append(dependencies, parseDependency(fields[1:]))
+					dependencies = append(dependencies, parseGoDependency(fields[1:]))
 				}
 			case ")":
 				inBlock = false
 				continue
 			default:
 				if inBlock {
-					dependencies = append(dependencies, parseDependency(fields))
+					dependencies = append(dependencies, parseGoDependency(fields))
 				} else {
 					continue
 				}
@@ -81,15 +95,15 @@ func ParseGoMod(content string) (types.PackageMeta, []types.Dependency, error) {
 		}
 	}
 
-	return pkgData, dependencies, nil
+	return pkgMeta, dependencies, nil
 }
 
-func makePkgMeta(field string) types.PackageMeta {
+func makeGoPkgMeta(field string) types.PackageMeta {
 	pkgMeta := types.PackageMeta{Name: field, Version: "", Ecosystem: "go"}
 	return pkgMeta
 }
 
-func parseDependency(fields []string) types.Dependency {
+func parseGoDependency(fields []string) types.Dependency {
 	version := fields[1]
 	isDev := len(fields) >= 4 && fields[3] == "indirect"
 
@@ -99,7 +113,47 @@ func parseDependency(fields []string) types.Dependency {
 }
 
 func ParseCargoToml(content string) (types.PackageMeta, []types.Dependency, error) {
-	return types.PackageMeta{}, nil, nil
+	var cargo cargoToml
+
+	if content == "" {
+		return types.PackageMeta{}, nil, fmt.Errorf("no cargo.toml found ParseCargoToml")
+	}
+
+	_, err := toml.Decode(content, &cargo)
+	if err != nil {
+		return types.PackageMeta{}, nil, err
+	}
+
+	pkgMeta := types.PackageMeta{Name: cargo.Package.Name, Version: cargo.Package.Version, Ecosystem: "cargo"}
+
+	dependencies := []types.Dependency{}
+	for name, val := range cargo.Dependencies {
+		var version string
+		switch v := val.(type) {
+		case string:
+			version = v
+		case map[string]interface{}:
+			version, _ = v["version"].(string)
+		}
+
+		dependency := types.Dependency{Name: name, Version: cleanVersion(version), Ecosystem: "cargo"}
+		dependencies = append(dependencies, dependency)
+	}
+
+	for name, val := range cargo.DevDependencies {
+		var version string
+		switch v := val.(type) {
+		case string:
+			version = v
+		case map[string]interface{}:
+			version, _ = v["version"].(string)
+		}
+
+		dependency := types.Dependency{Name: name, Version: cleanVersion(version), Ecosystem: "cargo", IsDev: true}
+		dependencies = append(dependencies, dependency)
+	}
+
+	return pkgMeta, dependencies, err
 }
 
 func cleanVersion(v string) string {

@@ -40,6 +40,7 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 	}{
 		{"package.json", parser.ParsePackageJSON},
 		{"go.mod", parser.ParseGoMod},
+		{"Cargo.toml", parser.ParseCargoToml},
 	}
 
 	var pkgMeta types.PackageMeta
@@ -61,7 +62,7 @@ func (s *Scanner) Scan(repoURL string) (*types.ScanResult, error) {
 	}
 
 	if deps == nil {
-		return nil, fmt.Errorf("no supported manifest file found (package.json, go.mod)")
+		return nil, fmt.Errorf("no supported manifest file found (package.json, go.mod, Cargo.toml)")
 	}
 
 	for _, dep := range deps {
